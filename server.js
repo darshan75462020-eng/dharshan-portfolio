@@ -11,9 +11,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// test route
+// health check route
 app.get("/", (req, res) => {
-  res.send("Backend is running 🚀");
+  res.send("Backend is live 🚀");
 });
 
 // contact form route
@@ -55,12 +55,7 @@ ${message}
 
 // start server
 const PORT = process.env.PORT || 5000;
-app.get("/", (req, res) => {
-  res.send("Backend is live 🚀");
-});
 
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
 });
-
-
