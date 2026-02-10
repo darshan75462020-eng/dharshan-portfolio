@@ -26,16 +26,24 @@ app.post("/contact", async (req, res) => {
 
   try {
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
       auth: {
         user: process.env.EMAIL,
         pass: process.env.EMAIL_PASS,
       },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
 
+    console.log("📨 Sending email...");
+
     await transporter.sendMail({
-      from: email,
+      from: `"Portfolio Contact" <${process.env.EMAIL}>`,
       to: process.env.EMAIL,
+      replyTo: email,
       subject: `Portfolio Contact from ${name}`,
       text: `
 Name: ${name}
@@ -46,14 +54,16 @@ ${message}
       `,
     });
 
+    console.log("✅ Email sent");
     res.status(200).json({ success: true, message: "Email sent successfully" });
+
   } catch (error) {
-    console.error("Email error:", error);
+    console.error("❌ Email error:", error);
     res.status(500).json({ error: "Failed to send email" });
   }
 });
 
-// start server
+// start server (VERY IMPORTANT: outside routes)
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
