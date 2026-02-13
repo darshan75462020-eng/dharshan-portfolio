@@ -1,28 +1,32 @@
 import express from "express";
 import cors from "cors";
-import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import { Resend } from "resend";
 
 dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
-// middlewares
+// Initialize Resend
+const resend = new Resend(process.env.RESEND_API_KEy);
+
+// Middlewares
 app.use(
   cors({
-    origin: "*", // later you can restrict to frontend URL
+    origin: "*", // Later change to your frontend domain
     methods: ["GET", "POST"],
   })
 );
 
 app.use(express.json());
 
-// health check route
+// Health check
 app.get("/", (req, res) => {
   res.send("Backend is live 🚀");
 });
 
-// contact form route
+// Contact route
 app.post("/contact", async (req, res) => {
   const { name, email, message } = req.body;
 
@@ -31,22 +35,13 @@ app.post("/contact", async (req, res) => {
   }
 
   try {
-   const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+    console.log("📨 Sending email via Resend...");
 
-
-    console.log("📨 Sending email...");
-
-    await transporter.sendMail({
-      from: `"Portfolio Contact" <${process.env.EMAIL}>`,
+    await resend.emails.send({
+      from: "Portfolio <onboarding@resend.dev>",
       to: process.env.EMAIL,
-      replyTo: email,
       subject: `Portfolio Contact from ${name}`,
+      reply_to: email,
       text: `
 Name: ${name}
 Email: ${email}
@@ -56,20 +51,20 @@ ${message}
       `,
     });
 
-    console.log("✅ Email sent");
-    res.status(200).json({ success: true, message: "Email sent successfully" });
+    console.log("✅ Email sent successfully");
+
+    res.status(200).json({
+      success: true,
+      message: "Email sent successfully",
+    });
 
   } catch (error) {
-    console.error("❌ Email error:", error);
+    console.error("❌ Resend error:", error);
     res.status(500).json({ error: "Failed to send email" });
   }
 });
 
-// start server (VERY IMPORTANT: outside routes)
-const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
 });
-
 
