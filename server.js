@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { Resend } from "resend";
 
 dotenv.config();
@@ -9,15 +11,27 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Initialize Resend
-const resend = new Resend(process.env.RESEND_API_KEy);
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Middlewares
+// 🔐 Security Headers
+app.use(helmet());
+
+// 🔐 Restrict CORS (VERY IMPORTANT)
 app.use(
   cors({
-    origin: "*", // Later change to your frontend domain
-    methods: ["GET", "POST"],
+    origin: "https://dharshan-portfolio-psi.vercel.app",
+    methods: ["POST"],
   })
 );
+
+// 🔐 Rate Limiting (Prevents spam)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 requests per IP
+  message: { error: "Too many requests. Please try again later." },
+});
+
+app.use(limiter);
 
 app.use(express.json());
 
@@ -30,13 +44,18 @@ app.get("/", (req, res) => {
 app.post("/contact", async (req, res) => {
   const { name, email, message } = req.body;
 
+  // Basic validation
   if (!name || !email || !message) {
     return res.status(400).json({ error: "All fields are required" });
   }
 
-  try {
-    console.log("📨 Sending email via Resend...");
+  // Basic email format validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
 
+  try {
     await resend.emails.send({
       from: "Portfolio <onboarding@resend.dev>",
       to: process.env.EMAIL,
@@ -51,15 +70,13 @@ ${message}
       `,
     });
 
-    console.log("✅ Email sent successfully");
-
     res.status(200).json({
       success: true,
       message: "Email sent successfully",
     });
 
   } catch (error) {
-    console.error("❌ Resend error:", error);
+    console.error("Resend error:", error);
     res.status(500).json({ error: "Failed to send email" });
   }
 });
@@ -67,4 +84,3 @@ ${message}
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
 });
-
